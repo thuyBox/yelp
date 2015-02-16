@@ -10,6 +10,9 @@
 #import "YelpClient.h"
 #import "TestTableViewCell.h"
 #import "UIImageView+AFNetworkingFadingIn.h"
+#import "UIScrollView+SVPullToRefresh.h"
+//#import "SVViewController.h"
+#import "SVPullToRefresh.h"
 
 NSString * const kYelpConsumerKey = @"vxKwwcR_NMQ7WaEiQBK_CA";
 NSString * const kYelpConsumerSecret = @"33QCvh5bIF5jIHR5klQr7RtBDhQ";
@@ -20,7 +23,8 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 
 @property (strong, nonatomic) IBOutlet UITableView *restaurantTableView;
 @property (nonatomic, strong) YelpClient *client;
-@property NSArray *restaurants;
+@property NSMutableArray *restaurants;
+//@property long currentMaxRow;
 @end
 
 @implementation MainViewController
@@ -28,6 +32,8 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    self.restaurants = [NSMutableArray array];
+    //self.currentMaxRow = 0;
     
     if (self) {
         // You can register for Yelp API keys here: http://www.yelp.com/developers/manage_api_keys
@@ -35,7 +41,8 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
         
         [self.client searchWithTerm:@"Thai" success:^(AFHTTPRequestOperation *operation, id response) {
             NSLog(@"response: %@", response);
-            self.restaurants = response[@"businesses"];
+            [self.restaurants addObjectsFromArray:response[@"businesses"]];
+            //self.currentMaxRow += self.restaurants.count;
             [self.restaurantTableView reloadData];
         } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
             NSLog(@"error: %@", [error description]);
@@ -54,7 +61,36 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     // Set delegate/datasource for tableview
     self.restaurantTableView.delegate = self;
     self.restaurantTableView.dataSource = self;
+    self.restaurantTableView.estimatedRowHeight = 106;
     self.restaurantTableView.rowHeight = UITableViewAutomaticDimension;
+    
+    __weak MainViewController *weakSelf = self;
+    [self.restaurantTableView addInfiniteScrollingWithActionHandler:^{
+        [weakSelf.client searchWithTerm:@"Thai" success:^(AFHTTPRequestOperation *operation, id response) {
+            NSLog(@"response: %@", response);
+            
+            NSArray *dataToAdd = response[@"businesses"];
+            
+            NSMutableArray *indexPaths = [NSMutableArray array];
+            NSInteger currentCount = weakSelf.restaurants.count;
+            for (int i = 0; i < dataToAdd.count; i++) {
+                [indexPaths addObject:[NSIndexPath indexPathForRow:currentCount+i inSection:0]];
+            }
+            
+            // do the insertion
+            [weakSelf.restaurants addObjectsFromArray:dataToAdd];
+            
+            // tell the table view to update (at all of the inserted index paths)
+            [weakSelf.restaurantTableView beginUpdates];
+            [weakSelf.restaurantTableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationTop];
+            [weakSelf.restaurantTableView endUpdates];
+            [weakSelf.restaurantTableView.infiniteScrollingView stopAnimating];
+            
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            NSLog(@"error: %@", [error description]);
+        }];
+    }];
+
 }
 
 #pragma mark - UITableViewDataSource
@@ -62,6 +98,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 - (NSInteger)tableView:(UITableView *)tableView
  numberOfRowsInSection:(NSInteger)section {
     return self.restaurants.count;
+    //return self.currentMaxRow;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView
@@ -70,9 +107,9 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     //cell.frame = CGRectMake(0,0,self.moviesTableView.frame.size.width,cell.frame.size.height);
     
     NSDictionary *restaurant = self.restaurants[indexPath.row];
-    NSLog(@"restaurant=%@, address=%@, city=%@", restaurant, restaurant[@"location"][@"address"], restaurant[@"location"][@"city"]);
+    //NSLog(@"restaurant=%@, address=%@, city=%@", restaurant, restaurant[@"location"][@"address"], restaurant[@"location"][@"city"]);
     cell.nameLabel.text = [NSString stringWithFormat:@"%ld. %@", (long) indexPath.row + 1, restaurant[@"name"]];
-    cell.addressLabel.text = [NSString stringWithFormat:@"%@, %@", restaurant[@"location"][@"address"][0], restaurant[@"location"][@"city"]];
+    cell.addressLabel.text = [NSString stringWithFormat:@"%@, %@", restaurant[@"location"][@"address"][0], restaurant[@"location"][@"neighborhoods"][0]];
     cell.reviewLabel.text = [NSString stringWithFormat:@"%@ Reviews", restaurant[@"review_count"] ];
     NSString *posterURLString = restaurant[@"image_url"];//rating_img_url_small
     [cell.posterView setImageWithURL:posterURLString fadingInDuration:0.3];
