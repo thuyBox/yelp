@@ -15,6 +15,7 @@
 #import <MapKit/MapKit.h>
 #import "MyLocation.h"
 #import <CoreLocation/CoreLocation.h>
+#import "FiltersViewController.h"
 
 NSString * const kYelpConsumerKey = @"vxKwwcR_NMQ7WaEiQBK_CA";
 NSString * const kYelpConsumerSecret = @"33QCvh5bIF5jIHR5klQr7RtBDhQ";
@@ -44,7 +45,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
         // You can register for Yelp API keys here: http://www.yelp.com/developers/manage_api_keys
         self.client = [[YelpClient alloc] initWithConsumerKey:kYelpConsumerKey consumerSecret:kYelpConsumerSecret accessToken:kYelpToken accessSecret:kYelpTokenSecret];
         
-        [self.client searchWithTerm:@"Thai" success:^(AFHTTPRequestOperation *operation, id response) {
+        [self.client searchWithTerm:@"Thai" offset:0 success:^(AFHTTPRequestOperation *operation, id response) {
             NSLog(@"response: %@", response);
             [self.restaurants addObjectsFromArray:response[@"businesses"]];
             [self.restaurantTableView reloadData];
@@ -55,12 +56,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     return self;
 }
 
-- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //self.navigationItem.titleView = [[UISearchBar alloc] init];
-    [self setupSearchBar];
-    
+- (void) setupTableView {
     UINib *restaurantCellNib = [UINib nibWithNibName:@"TestTableViewCell" bundle:nil];
     [self.restaurantTableView registerNib:restaurantCellNib forCellReuseIdentifier:@"TestTableViewCell"];
     
@@ -72,7 +68,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     
     __weak MainViewController *weakSelf = self;
     [self.restaurantTableView addInfiniteScrollingWithActionHandler:^{
-        [weakSelf.client searchWithTerm:@"Thai" success:^(AFHTTPRequestOperation *operation, id response) {
+        [weakSelf.client searchWithTerm:@"Thai" offset:weakSelf.restaurants.count success:^(AFHTTPRequestOperation *operation, id response) {
             NSLog(@"response: %@", response);
             
             NSArray *dataToAdd = response[@"businesses"];
@@ -96,8 +92,14 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
             NSLog(@"error: %@", [error description]);
         }];
     }];
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    [self setupSearchBar];
+    [self setupTableView];
     [self setupMap];
-    
 }
 
 - (void) setupSearchBar {
@@ -113,7 +115,10 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 }
 
 - (void) onFiltersButtonClicked {
-
+    FiltersViewController *vc = [[FiltersViewController alloc] init];
+    UINavigationController *nvc = [[UINavigationController alloc] initWithRootViewController:vc];
+    
+    [self.navigationController presentViewController:nvc animated:YES completion:nil];
 }
 
 - (void) onListOrMapButtonClicked {
@@ -134,7 +139,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     }
 }
 
-#define METERS_PER_MILE 1609.344
+//#define METERS_PER_MILE 1609.344
 - (void) setupMap {
     self.locationManager = [[CLLocationManager alloc]init];
     self.locationManager.delegate = self;
@@ -150,34 +155,28 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 }
 
 - (void) setMapRegionWithLatitude:(float) latitude longitude:(float) longitude {
-    // 1
     CLLocationCoordinate2D zoomLocation;
-     zoomLocation.latitude = latitude;
-     zoomLocation.longitude= longitude;
-     
-     // 2
-     MKCoordinateRegion viewRegion = MKCoordinateRegionMakeWithDistance(zoomLocation, 7000, 7000);
-     
-     // 3
-     [self.mapView setRegion:viewRegion animated:YES];
+    zoomLocation.latitude = latitude;
+    zoomLocation.longitude= longitude;
+    
+    MKCoordinateRegion viewRegion = MKCoordinateRegionMakeWithDistance(zoomLocation, 7000, 7000);
+    [self.mapView setRegion:viewRegion animated:YES];
 }
 
 // Location Manager Delegate Methods
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray *)locations
 {
-    NSLog(@"locations: %@", [locations lastObject]);
+    //NSLog(@"locations: %@", [locations lastObject]);
 }
 
 - (void) addAnotations:(NSArray *)restaurantsToAdd {
-    //[self.mapView removeAnnotations:self.mapView.annotations];
-    
     for (NSDictionary *restaurant in restaurantsToAdd) {
         NSLog(@"latitude=%@, longitude=%@", restaurant[@"location"][@"coordinate"][@"latitude"], restaurant[@"location"][@"coordinate"][@"longitude"]);
         NSNumber * latitude = [NSNumber numberWithFloat:[restaurant[@"location"][@"coordinate"][@"latitude"] floatValue]];
-        NSNumber * longitude = [NSNumber numberWithFloat:[restaurant[@"location"][@"coordinate"][@"longitude"] floatValue]];//restaurant[@"region"][@"center"][@"longitude"] ;
-        //NSString * crimeDescription = [restaurant objectAtIndex:18];
-        NSString *name = restaurant[@"name"];
-        NSString * reviews = [NSString stringWithFormat:@"%@ Reviews", restaurant[@"review_count"] ];
+        NSNumber * longitude = [NSNumber numberWithFloat:[restaurant[@"location"][@"coordinate"][@"longitude"] floatValue]];
+        
+        //NSString *name = restaurant[@"name"];
+        //NSString * reviews = [NSString stringWithFormat:@"%@ Reviews", restaurant[@"review_count"] ];
         
         CLLocationCoordinate2D coordinate;
         coordinate.latitude = latitude.doubleValue;
@@ -244,7 +243,6 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     TestTableViewCell *cell = [self.restaurantTableView dequeueReusableCellWithIdentifier:@"TestTableViewCell" forIndexPath:indexPath];
     
     NSDictionary *restaurant = self.restaurants[indexPath.row];
-    //NSLog(@"restaurant=%@, address=%@, city=%@", restaurant, restaurant[@"location"][@"address"], restaurant[@"location"][@"city"]);
     cell.nameLabel.text = [NSString stringWithFormat:@"%ld. %@", (long) indexPath.row + 1, restaurant[@"name"]];
     cell.addressLabel.text = [NSString stringWithFormat:@"%@, %@", restaurant[@"location"][@"address"][0], restaurant[@"location"][@"neighborhoods"][0]];
     cell.reviewLabel.text = [NSString stringWithFormat:@"%@ Reviews", restaurant[@"review_count"] ];

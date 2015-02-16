@@ -7,6 +7,7 @@
     <objects>
         <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="FiltersViewController">
             <connections>
+                <outlet property="tableView" destination="PUP-Hz-FOS" id="46r-1Q-O9r"/>
                 <outlet property="view" destination="i5M-Pr-FkT" id="sfx-zR-JGt"/>
             </connections>
         </placeholder>
@@ -14,8 +15,22 @@
         <view clearsContextBeforeDrawing="NO" contentMode="scaleToFill" id="i5M-Pr-FkT">
             <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="22" sectionFooterHeight="22" translatesAutoresizingMaskIntoConstraints="NO" id="PUP-Hz-FOS">
+                    <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
+                    <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                    <inset key="separatorInset" minX="15" minY="0.0" maxX="15" maxY="0.0"/>
+                    <color key="sectionIndexBackgroundColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
+                </tableView>
+            </subviews>
             <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
-            <point key="canvasLocation" x="260" y="301"/>
+            <constraints>
+                <constraint firstAttribute="trailing" secondItem="PUP-Hz-FOS" secondAttribute="trailing" id="DgA-k1-qvi"/>
+                <constraint firstItem="PUP-Hz-FOS" firstAttribute="leading" secondItem="i5M-Pr-FkT" secondAttribute="leading" id="bz6-87-2sF"/>
+                <constraint firstItem="PUP-Hz-FOS" firstAttribute="top" secondItem="i5M-Pr-FkT" secondAttribute="top" id="c9t-5s-bT9"/>
+                <constraint firstAttribute="bottom" secondItem="PUP-Hz-FOS" secondAttribute="bottom" id="mi4-73-kRJ"/>
+            </constraints>
+            <point key="canvasLocation" x="247" y="301"/>
         </view>
     </objects>
     <simulatedMetricsContainer key="defaultSimulatedMetrics">
