@@ -13,6 +13,8 @@
 
 - (id)initWithConsumerKey:(NSString *)consumerKey consumerSecret:(NSString *)consumerSecret accessToken:(NSString *)accessToken accessSecret:(NSString *)accessSecret;
 
-- (AFHTTPRequestOperation *)searchWithTerm:(NSString *)term offset:(long) offset success:(void (^)(AFHTTPRequestOperation *operation, id response))success failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure;
+- (AFHTTPRequestOperation *)searchWithTerm:(NSString *)term params:(NSDictionary *)params offset:(long) offset success:(void (^)(AFHTTPRequestOperation *operation, id response))success failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure;
+
+/*- (AFHTTPRequestOperation *)searchWithTerm:(NSString *)term offset:(long) offset success:(void (^)(AFHTTPRequestOperation *operation, id response))success failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure;*/
 
 @end

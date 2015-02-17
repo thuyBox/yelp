@@ -30,6 +30,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 @property NSMutableArray *restaurants;
 @property UISearchBar *searchBar;
 @property CLGeocoder *geocoder;
+@property NSDictionary * filters;
 
 @property (strong, nonatomic) CLLocationManager *locationManager;
 @end
@@ -40,12 +41,13 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     self.restaurants = [NSMutableArray array];
+    self.filters = [[NSDictionary alloc] init];
     
     if (self) {
         // You can register for Yelp API keys here: http://www.yelp.com/developers/manage_api_keys
         self.client = [[YelpClient alloc] initWithConsumerKey:kYelpConsumerKey consumerSecret:kYelpConsumerSecret accessToken:kYelpToken accessSecret:kYelpTokenSecret];
         
-        [self.client searchWithTerm:@"Thai" offset:0 success:^(AFHTTPRequestOperation *operation, id response) {
+        [self.client searchWithTerm:@"Thai" params:nil offset:0 success:^(AFHTTPRequestOperation *operation, id response) {
             NSLog(@"response: %@", response);
             [self.restaurants addObjectsFromArray:response[@"businesses"]];
             [self.restaurantTableView reloadData];
@@ -53,7 +55,25 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
             NSLog(@"error: %@", [error description]);
         }];
     }
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(filtersUpdated:) name:@"FiltersUpdatedNotification" object:nil];
     return self;
+}
+
+- (void) filtersUpdated:(NSNotification*)notification {
+    self.filters = notification.userInfo;
+    [self.client searchWithTerm:@"Thai" params:self.filters offset:0 success:^(AFHTTPRequestOperation *operation, id response) {
+        NSLog(@"response: %@", response);
+        
+        [self.restaurants removeAllObjects];
+        [self.restaurants addObjectsFromArray:response[@"businesses"]];
+        [self.restaurantTableView reloadData];
+        
+        [self.mapView removeAnnotations:self.mapView.annotations];
+        [self addAnotations:self.restaurants];
+        
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        NSLog(@"error: %@", [error description]);
+    }];
 }
 
 - (void) setupTableView {
@@ -68,7 +88,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     
     __weak MainViewController *weakSelf = self;
     [self.restaurantTableView addInfiniteScrollingWithActionHandler:^{
-        [weakSelf.client searchWithTerm:@"Thai" offset:weakSelf.restaurants.count success:^(AFHTTPRequestOperation *operation, id response) {
+        [weakSelf.client searchWithTerm:@"Thai" params:weakSelf.filters offset:weakSelf.restaurants.count success:^(AFHTTPRequestOperation *operation, id response) {
             NSLog(@"response: %@", response);
             
             NSArray *dataToAdd = response[@"businesses"];
@@ -111,7 +131,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     
     self.searchBar = [[UISearchBar alloc] init];
     self.navigationItem.titleView = self.searchBar;
-    //self.searchBar.delegate = self;
+    //TODO: implement search
 }
 
 - (void) onFiltersButtonClicked {
@@ -126,7 +146,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
         self.navigationItem.rightBarButtonItem.title = @"List";
         self.restaurantTableView.hidden = YES;
         self.mapView.hidden = NO;
-        NSLog(@"number of mapView annotation %ld", (long)self.mapView.annotations.count);
+        
         if (self.mapView.annotations.count < self.restaurants.count) {
             NSArray *restaurantsToAdd = [self.restaurants subarrayWithRange:NSMakeRange(self.mapView.annotations.count, 20)];
             NSLog(@"number of restaurants to add %ld", (long)restaurantsToAdd.count);
@@ -139,7 +159,6 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     }
 }
 
-//#define METERS_PER_MILE 1609.344
 - (void) setupMap {
     self.locationManager = [[CLLocationManager alloc]init];
     self.locationManager.delegate = self;
@@ -175,9 +194,6 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
         NSNumber * latitude = [NSNumber numberWithFloat:[restaurant[@"location"][@"coordinate"][@"latitude"] floatValue]];
         NSNumber * longitude = [NSNumber numberWithFloat:[restaurant[@"location"][@"coordinate"][@"longitude"] floatValue]];
         
-        //NSString *name = restaurant[@"name"];
-        //NSString * reviews = [NSString stringWithFormat:@"%@ Reviews", restaurant[@"review_count"] ];
-        
         CLLocationCoordinate2D coordinate;
         coordinate.latitude = latitude.doubleValue;
         coordinate.longitude = longitude.doubleValue;
@@ -185,25 +201,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
         MKPointAnnotation *annotation = [[MKPointAnnotation alloc] init];
         annotation.coordinate = coordinate;
         [self.mapView addAnnotation:annotation];
-        
-        /*NSString *address = [NSString stringWithFormat:@"%@, %@, %@ %@", restaurant[@"location"][@"address"][0], restaurant[@"location"][@"city"], restaurant[@"location"][@"state_code"], restaurant[@"location"][@"postal_code"]];
-        
-        NSLog(@"getting coord for address %@", address);
-        [self.geocoder geocodeAddressString:address
-                          completionHandler:^(NSArray* placemarks, NSError* error){
-                              // for (CLPlacemark* aPlacemark in placemarks)
-                              //{
-                              CLPlacemark *placemark = [placemarks objectAtIndex:0];
-                              CLLocation *location = placemark.location;
-                              CLLocationCoordinate2D coordinate = location.coordinate;
-                              // Process the placemark.
-                              //}
-                              
-                              MyLocation *annotation = [[MyLocation alloc] initWithName:name address:address coordinate:coordinate] ;
-                              [self.mapView addAnnotation:annotation];
-                          }];*/
     }
-    //[self.mapView showAnnotations:self.mapView.annotations animated:YES];
 }
 
 
@@ -215,12 +213,6 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
         MKPinAnnotationView *annotationView = (MKPinAnnotationView *) [self.mapView dequeueReusableAnnotationViewWithIdentifier:identifier];
         if (annotationView == nil) {
             annotationView=[[MKPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:identifier];
-            //annotationView.pinColor=MKPinAnnotationColorPurple;
-
-            /*annotationView = [[MKAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:identifier];
-            annotationView.enabled = YES;
-            annotationView.canShowCallout = YES;*/
-            //annotationView.image = [UIImage imageNamed:@"arrest.png"];//here we use a nice image instead of the default pins
         } else {
             annotationView.annotation = annotation;
         }
@@ -246,20 +238,22 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     cell.nameLabel.text = [NSString stringWithFormat:@"%ld. %@", (long) indexPath.row + 1, restaurant[@"name"]];
     cell.addressLabel.text = [NSString stringWithFormat:@"%@, %@", restaurant[@"location"][@"address"][0], restaurant[@"location"][@"neighborhoods"][0]];
     cell.reviewLabel.text = [NSString stringWithFormat:@"%@ Reviews", restaurant[@"review_count"] ];
-    NSString *posterURLString = restaurant[@"image_url"];//rating_img_url_small
+    
+    NSString *posterURLString = restaurant[@"image_url"];
     [cell.posterView setImageWithURL:posterURLString fadingInDuration:0.3];
-    NSString *ratingURLString = restaurant[@"rating_img_url_small"];//rating_img_url_small
+    
+    NSString *ratingURLString = restaurant[@"rating_img_url_small"];
     [cell.ratingView setImageWithURL:ratingURLString fadingInDuration:0.3];
+    
     cell.distanceLabel.text = [NSString stringWithFormat:@"%.2f mi", [restaurant[@"distance"] floatValue] * 0.000621371];
     cell.dollarLabel.text = @"$$";
     
     NSMutableArray *categories = [[NSMutableArray alloc] init];
-    
     for (NSArray *elem in restaurant[@"categories"]) {
         [categories addObject:elem[0]];
     }
-    
     cell.categoryLabel.text = [categories componentsJoinedByString:@", "];
+    
     return cell;
 }
 

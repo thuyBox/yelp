@@ -13,8 +13,6 @@
 
 - (void)awakeFromNib {
     // Initialization code
-    //UIFont *newFont = [UIFont fontWithName:[NSString stringWithFormat:@"%@-Bold",currentFont.fontName] size:currentFont.pointSize];
-    //self.nameLabel.font = newFont;
     self.posterView.layer.cornerRadius = 3;
     self.posterView.clipsToBounds = YES;
     [self layoutSubviews];

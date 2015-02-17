@@ -10,5 +10,5 @@
 
 @interface FiltersViewController : UIViewController
 @property (strong, nonatomic) IBOutlet UITableView *tableView;
-
+@property NSDictionary *initialFilters;
 @end

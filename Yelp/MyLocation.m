@@ -1,11 +1,3 @@
-//
-//  MyLocation.m
-//  Yelp
-//
-//  Created by Baeksan Oh on 2/15/15.
-//  Copyright (c) 2015 codepath. All rights reserved.
-//
-
 #import "MyLocation.h"
 #import <AddressBook/AddressBook.h>
 
